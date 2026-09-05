@@ -1,0 +1,235 @@
+<title>Blind Stopwatch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Spectral:ital@1&display=swap">
+<style>
+  :root{
+    --ink:#1c1810;
+    --ink-soft:#4a3f2c;
+    --paper:#e6d9b8;
+    --paper-raised:#f1e6c8;
+    --paper-deep:#dccb9f;
+    --brass:#8a6224;
+    --brass-bright:#a97b2f;
+    --aetherite:#276b62;
+    --aetherite-bright:#2f8378;
+    --rust:#7a3320;
+    --line:rgba(28,24,16,.22);
+    --shadow:rgba(28,24,16,.25);
+    --focus:#2f8378;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e9ddb8; --ink-soft:#c3b48a; --paper:#15141a; --paper-raised:#1d1c24;
+      --paper-deep:#0f0e13; --brass:#c99a4c; --brass-bright:#e0b264;
+      --aetherite:#4fa89c; --aetherite-bright:#6bc4b8; --rust:#c9694f;
+      --line:rgba(233,221,184,.18); --shadow:rgba(0,0,0,.55); --focus:#6bc4b8;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e9ddb8; --ink-soft:#c3b48a; --paper:#15141a; --paper-raised:#1d1c24;
+    --paper-deep:#0f0e13; --brass:#c99a4c; --brass-bright:#e0b264;
+    --aetherite:#4fa89c; --aetherite-bright:#6bc4b8; --rust:#c9694f;
+    --line:rgba(233,221,184,.18); --shadow:rgba(0,0,0,.55); --focus:#6bc4b8;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Mono',monospace;
+    display:flex; align-items:center; justify-content:center; padding:32px 18px;
+  }
+  .wrap{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:22px; }
+
+  h1{
+    font-family:'Cinzel',Georgia,serif; font-weight:700; letter-spacing:.03em;
+    font-size:clamp(22px,5vw,28px); margin:0; text-align:center; color:var(--ink);
+  }
+  .tag{
+    font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--brass);
+    text-align:center; margin-top:2px;
+  }
+
+  .panel{
+    width:100%; background:var(--paper-raised); border:1px solid var(--line);
+    border-radius:4px; padding:30px 26px 26px; box-shadow:0 10px 30px var(--shadow);
+    display:flex; flex-direction:column; align-items:center; gap:18px;
+  }
+
+  .face{
+    width:100%; aspect-ratio:16/8; border-radius:6px;
+    background:var(--paper-deep); border:2px solid var(--brass);
+    box-shadow:inset 0 0 0 5px var(--paper), inset 0 2px 10px var(--shadow);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    position:relative; overflow:hidden;
+  }
+  .display{
+    font-size:clamp(38px,10vw,56px); font-weight:600; letter-spacing:.02em;
+    font-variant-numeric:tabular-nums; color:var(--aetherite-bright);
+    line-height:1;
+  }
+  .display.masked{ color:var(--rust); animation:pulse 1.8s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce){ .display.masked{ animation:none; opacity:.75; } }
+  @keyframes pulse{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
+
+  .status{
+    font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .status.is-running{ color:var(--aetherite); }
+  .status.is-hidden{ color:var(--rust); }
+
+  .btn-main{
+    width:100%; padding:16px 0; border:none; border-radius:3px; cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:16px;
+    letter-spacing:.1em; text-transform:uppercase;
+    background:var(--brass); color:var(--paper);
+    transition:background .15s ease, transform .1s ease;
+  }
+  .btn-main:hover{ background:var(--brass-bright); }
+  .btn-main:active{ transform:translateY(1px); }
+  .btn-main.running{ background:var(--aetherite); }
+  .btn-main.running:hover{ background:var(--aetherite-bright); }
+  .btn-main:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+
+  .toggle-row{
+    width:100%; display:flex; align-items:flex-start; gap:12px;
+    padding-top:6px; border-top:1px solid var(--line);
+  }
+  .switch{
+    position:relative; flex:0 0 auto; width:40px; height:22px; margin-top:2px;
+  }
+  .switch input{ position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
+  .switch .track{
+    position:absolute; inset:0; background:var(--paper-deep); border:1px solid var(--line);
+    border-radius:20px; transition:background .15s ease;
+  }
+  .switch .knob{
+    position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%;
+    background:var(--ink-soft); transition:transform .15s ease, background .15s ease;
+  }
+  .switch input:checked + .track{ background:var(--rust); border-color:var(--rust); }
+  .switch input:checked + .track .knob{ transform:translateX(18px); background:var(--paper); }
+  .switch input:focus-visible + .track{ outline:2px solid var(--focus); outline-offset:2px; }
+  .switch input:disabled + .track{ opacity:.5; cursor:not-allowed; }
+
+  .toggle-text{ display:flex; flex-direction:column; gap:2px; }
+  .toggle-text .name{ font-size:13.5px; font-weight:600; color:var(--ink); }
+  .toggle-text .desc{
+    font-family:'Spectral',Georgia,serif; font-style:italic; font-size:13px; color:var(--ink-soft);
+  }
+
+  footer{
+    font-size:11px; color:var(--ink-soft); text-align:center; line-height:1.6;
+  }
+  kbd{
+    font-family:'IBM Plex Mono',monospace; background:var(--paper-deep); border:1px solid var(--line);
+    border-radius:3px; padding:1px 6px; font-size:10.5px;
+  }
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Blind Stopwatch</h1>
+    <div class="tag">start · stop · no peeking</div>
+  </div>
+
+  <div class="panel">
+    <div class="face">
+      <div class="display" id="display">00:00.00</div>
+      <div class="status" id="status">READY</div>
+    </div>
+
+    <button class="btn-main" id="mainBtn" type="button">Start</button>
+
+    <label class="toggle-row" for="blindToggle">
+      <span class="switch">
+        <input type="checkbox" id="blindToggle">
+        <span class="track"><span class="knob"></span></span>
+      </span>
+      <span class="toggle-text">
+        <span class="name">Blind Stop</span>
+        <span class="desc">Hide the time while it runs. It only shows once you stop it.</span>
+      </span>
+    </label>
+  </div>
+
+  <footer>Space bar also starts and stops it. <kbd>Space</kbd></footer>
+</div>
+
+<script>
+  (function(){
+    var display = document.getElementById('display');
+    var status = document.getElementById('status');
+    var mainBtn = document.getElementById('mainBtn');
+    var blindToggle = document.getElementById('blindToggle');
+
+    var running = false;
+    var blind = false;
+    var startTs = null;
+    var rafId = null;
+    var MASK = '••:••.••';
+
+    try{
+      var saved = localStorage.getItem('blindStopwatch.blind');
+      if(saved === '1'){ blind = true; blindToggle.checked = true; }
+    }catch(e){}
+
+    function fmt(ms){
+      var totalCenti = Math.floor(ms / 10);
+      var centi = totalCenti % 100;
+      var totalSec = Math.floor(totalCenti / 100);
+      var sec = totalSec % 60;
+      var min = Math.floor(totalSec / 60);
+      function pad(n){ return (n < 10 ? '0' : '') + n; }
+      return pad(min) + ':' + pad(sec) + '.' + pad(centi);
+    }
+
+    function tick(){
+      if(!running) return;
+      if(!blind){
+        display.textContent = fmt(performance.now() - startTs);
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function start(){
+      running = true;
+      startTs = performance.now();
+      mainBtn.textContent = 'Stop';
+      mainBtn.classList.add('running');
+      blindToggle.disabled = true;
+      status.textContent = blind ? 'RUNNING — CONCEALED' : 'RUNNING';
+      status.className = 'status ' + (blind ? 'is-hidden' : 'is-running');
+      display.textContent = blind ? MASK : '00:00.00';
+      display.classList.toggle('masked', blind);
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function stop(){
+      running = false;
+      if(rafId) cancelAnimationFrame(rafId);
+      var elapsed = performance.now() - startTs;
+      display.classList.remove('masked');
+      display.textContent = fmt(elapsed);
+      mainBtn.textContent = 'Start';
+      mainBtn.classList.remove('running');
+      blindToggle.disabled = false;
+      status.textContent = 'STOPPED';
+      status.className = 'status';
+    }
+
+    mainBtn.addEventListener('click', function(){
+      if(running) stop(); else start();
+    });
+
+    blindToggle.addEventListener('change', function(){
+      blind = blindToggle.checked;
+      try{ localStorage.setItem('blindStopwatch.blind', blind ? '1' : '0'); }catch(e){}
+    });
+
+    document.addEventListener('keydown', function(e){
+      if(e.code === 'Space' && document.activeElement !== blindToggle){
+        e.preventDefault();
+        mainBtn.click();
+      }
+    });
+  })();
+</script>
