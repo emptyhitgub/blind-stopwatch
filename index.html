@@ -1,165 +1,246 @@
 <title>Blind Stopwatch</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Spectral:ital@1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <style>
   :root{
     --ink:#1c1810;
     --ink-soft:#4a3f2c;
     --paper:#e6d9b8;
-    --paper-raised:#f1e6c8;
-    --paper-deep:#dccb9f;
-    --brass:#8a6224;
-    --brass-bright:#a97b2f;
-    --aetherite:#276b62;
+    --paper-raised:#efe2c0;
+    --paper-deep:#d8c592;
+    --brass-1:#c9a15a;
+    --brass-2:#8a6224;
+    --brass-3:#5e4318;
     --aetherite-bright:#2f8378;
     --rust:#7a3320;
-    --line:rgba(28,24,16,.22);
-    --shadow:rgba(28,24,16,.25);
+    --line:rgba(28,24,16,.28);
+    --shadow:rgba(28,24,16,.35);
     --focus:#2f8378;
+    --lcd-bg:#100d09;
+    --lcd-fg:#6fe0c9;
+    --lcd-fg-masked:#e2664a;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --ink:#e9ddb8; --ink-soft:#c3b48a; --paper:#15141a; --paper-raised:#1d1c24;
-      --paper-deep:#0f0e13; --brass:#c99a4c; --brass-bright:#e0b264;
-      --aetherite:#4fa89c; --aetherite-bright:#6bc4b8; --rust:#c9694f;
-      --line:rgba(233,221,184,.18); --shadow:rgba(0,0,0,.55); --focus:#6bc4b8;
+      --ink:#e9ddb8; --ink-soft:#bfae82; --paper:#121116; --paper-raised:#1b1a20;
+      --paper-deep:#232028; --brass-1:#d9ad63; --brass-2:#a97b2f; --brass-3:#6b4d1e;
+      --aetherite-bright:#6bc4b8; --rust:#c9694f;
+      --line:rgba(233,221,184,.16); --shadow:rgba(0,0,0,.6); --focus:#6bc4b8;
     }
   }
   :root[data-theme="dark"]{
-    --ink:#e9ddb8; --ink-soft:#c3b48a; --paper:#15141a; --paper-raised:#1d1c24;
-    --paper-deep:#0f0e13; --brass:#c99a4c; --brass-bright:#e0b264;
-    --aetherite:#4fa89c; --aetherite-bright:#6bc4b8; --rust:#c9694f;
-    --line:rgba(233,221,184,.18); --shadow:rgba(0,0,0,.55); --focus:#6bc4b8;
+    --ink:#e9ddb8; --ink-soft:#bfae82; --paper:#121116; --paper-raised:#1b1a20;
+    --paper-deep:#232028; --brass-1:#d9ad63; --brass-2:#a97b2f; --brass-3:#6b4d1e;
+    --aetherite-bright:#6bc4b8; --rust:#c9694f;
+    --line:rgba(233,221,184,.16); --shadow:rgba(0,0,0,.6); --focus:#6bc4b8;
   }
 
   *{ box-sizing:border-box; }
+  html,body{ height:100%; }
   body{
-    margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
-    font-family:'IBM Plex Mono',monospace;
-    display:flex; align-items:center; justify-content:center; padding:32px 18px;
-  }
-  .wrap{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:22px; }
-
-  h1{
-    font-family:'Cinzel',Georgia,serif; font-weight:700; letter-spacing:.03em;
-    font-size:clamp(22px,5vw,28px); margin:0; text-align:center; color:var(--ink);
-  }
-  .tag{
-    font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--brass);
-    text-align:center; margin-top:2px;
+    margin:0; background:
+      radial-gradient(ellipse at 50% 38%, var(--paper-raised) 0%, var(--paper) 72%);
+    color:var(--ink); font-family:'IBM Plex Mono',monospace;
+    display:flex; align-items:center; justify-content:center; padding:40px 16px;
   }
 
-  .panel{
-    width:100%; background:var(--paper-raised); border:1px solid var(--line);
-    border-radius:4px; padding:30px 26px 26px; box-shadow:0 10px 30px var(--shadow);
-    display:flex; flex-direction:column; align-items:center; gap:18px;
+  .stage{ font-size:clamp(13.5px,4.6vw,20px); display:flex; flex-direction:column; align-items:center; gap:1.4em; }
+
+  /* ============ the watch ============ */
+  .watch{ position:relative; width:16em; height:16em; }
+
+  .case{
+    position:absolute; inset:0; border-radius:50%;
+    background:
+      radial-gradient(circle at 32% 28%, var(--brass-1), var(--brass-2) 55%, var(--brass-3) 100%);
+    box-shadow:
+      0 1.2em 2.2em var(--shadow),
+      inset 0 0 0 .18em rgba(0,0,0,.25),
+      inset 0 .12em .3em rgba(255,255,255,.35);
+  }
+  .case::before, .case::after{
+    content:""; position:absolute; inset:0; border-radius:50%;
+  }
+  /* minute ticks */
+  .case::before{
+    z-index:1;
+    background: repeating-conic-gradient(var(--ink) 0deg 1deg, transparent 1deg 6deg);
+    -webkit-mask-image: radial-gradient(circle, transparent 0 7.05em, #000 7.15em 7.5em, transparent 7.6em 100%);
+            mask-image: radial-gradient(circle, transparent 0 7.05em, #000 7.15em 7.5em, transparent 7.6em 100%);
+    opacity:.55;
+  }
+  /* hour ticks */
+  .case::after{
+    z-index:2;
+    background: repeating-conic-gradient(var(--ink) 0deg 2.2deg, transparent 2.2deg 30deg);
+    -webkit-mask-image: radial-gradient(circle, transparent 0 6.95em, #000 7.0em 7.7em, transparent 7.8em 100%);
+            mask-image: radial-gradient(circle, transparent 0 6.95em, #000 7.0em 7.7em, transparent 7.8em 100%);
+    opacity:.8;
   }
 
-  .face{
-    width:100%; aspect-ratio:16/8; border-radius:6px;
-    background:var(--paper-deep); border:2px solid var(--brass);
-    box-shadow:inset 0 0 0 5px var(--paper), inset 0 2px 10px var(--shadow);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
-    position:relative; overflow:hidden;
+  .dial-face{
+    position:absolute; z-index:3; border-radius:50%;
+    top:50%; left:50%; width:13.8em; height:13.8em; transform:translate(-50%,-50%);
+    background: radial-gradient(circle at 50% 42%, var(--paper-raised), var(--paper-deep) 88%);
+    box-shadow: inset 0 .05em .6em var(--shadow), inset 0 0 0 .07em var(--line);
   }
-  .display{
-    font-size:clamp(38px,10vw,56px); font-weight:600; letter-spacing:.02em;
-    font-variant-numeric:tabular-nums; color:var(--aetherite-bright);
-    line-height:1;
-  }
-  .display.masked{ color:var(--rust); animation:pulse 1.8s ease-in-out infinite; }
-  @media (prefers-reduced-motion: reduce){ .display.masked{ animation:none; opacity:.75; } }
-  @keyframes pulse{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
 
+  .numerals{ position:absolute; inset:0; z-index:4; }
+  .numerals span{
+    position:absolute; top:50%; left:50%; width:0; height:0;
+  }
+  .numerals span i{
+    position:absolute; top:0; left:0; display:block;
+    font-style:normal; font-family:'Cinzel',serif; font-weight:600;
+    font-size:.68em; letter-spacing:.02em; color:var(--ink-soft);
+  }
+
+  .dial-content{
+    position:absolute; z-index:5; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:.5em;
+  }
   .status{
-    font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-soft);
+    font-size:.6em; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-soft);
   }
-  .status.is-running{ color:var(--aetherite); }
+  .status.is-running{ color:var(--aetherite-bright); }
   .status.is-hidden{ color:var(--rust); }
 
-  .btn-main{
-    width:100%; padding:16px 0; border:none; border-radius:3px; cursor:pointer;
-    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:16px;
-    letter-spacing:.1em; text-transform:uppercase;
-    background:var(--brass); color:var(--paper);
-    transition:background .15s ease, transform .1s ease;
+  .window{
+    width:7em; height:2.5em; border-radius:.2em; background:var(--lcd-bg);
+    box-shadow: inset 0 .1em .3em rgba(0,0,0,.7), 0 .05em 0 rgba(255,255,255,.08);
+    display:flex; align-items:center; justify-content:center;
   }
-  .btn-main:hover{ background:var(--brass-bright); }
-  .btn-main:active{ transform:translateY(1px); }
-  .btn-main.running{ background:var(--aetherite); }
-  .btn-main.running:hover{ background:var(--aetherite-bright); }
-  .btn-main:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .display{
+    font-size:1em; font-weight:600; letter-spacing:.03em;
+    font-variant-numeric:tabular-nums; color:var(--lcd-fg); line-height:1;
+  }
+  .display.masked{ color:var(--lcd-fg-masked); animation:pulse 1.8s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce){ .display.masked{ animation:none; opacity:.7; } }
+  @keyframes pulse{ 0%,100%{ opacity:.4; } 50%{ opacity:1; } }
 
-  .toggle-row{
-    width:100%; display:flex; align-items:flex-start; gap:12px;
-    padding-top:6px; border-top:1px solid var(--line);
-  }
-  .switch{
-    position:relative; flex:0 0 auto; width:40px; height:22px; margin-top:2px;
-  }
-  .switch input{ position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
-  .switch .track{
-    position:absolute; inset:0; background:var(--paper-deep); border:1px solid var(--line);
-    border-radius:20px; transition:background .15s ease;
-  }
-  .switch .knob{
-    position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%;
-    background:var(--ink-soft); transition:transform .15s ease, background .15s ease;
-  }
-  .switch input:checked + .track{ background:var(--rust); border-color:var(--rust); }
-  .switch input:checked + .track .knob{ transform:translateX(18px); background:var(--paper); }
-  .switch input:focus-visible + .track{ outline:2px solid var(--focus); outline-offset:2px; }
-  .switch input:disabled + .track{ opacity:.5; cursor:not-allowed; }
+  .maker{ font-size:.48em; letter-spacing:.14em; color:var(--ink-soft); opacity:.7; }
 
-  .toggle-text{ display:flex; flex-direction:column; gap:2px; }
-  .toggle-text .name{ font-size:13.5px; font-weight:600; color:var(--ink); }
-  .toggle-text .desc{
-    font-family:'Spectral',Georgia,serif; font-style:italic; font-size:13px; color:var(--ink-soft);
+  /* crown + pushers */
+  .crown{
+    position:absolute; z-index:6; top:-.85em; left:50%; transform:translateX(-50%);
+    width:1.5em; height:1.05em; border-radius:.18em;
+    background: repeating-linear-gradient(90deg, var(--brass-1) 0 .09em, var(--brass-3) .09em .18em);
+    box-shadow: 0 .1em .2em var(--shadow), inset 0 .05em 0 rgba(255,255,255,.3);
   }
 
-  footer{
-    font-size:11px; color:var(--ink-soft); text-align:center; line-height:1.6;
+  .pusher{
+    position:absolute; z-index:6; top:-.7em; width:1.35em; height:.95em; border-radius:.16em;
+    background: linear-gradient(180deg, var(--brass-1), var(--brass-2));
+    box-shadow: 0 .12em .2em var(--shadow), inset 0 .05em 0 rgba(255,255,255,.35);
+    border:none; cursor:pointer; padding:0;
+    display:flex; align-items:center; justify-content:center;
   }
-  kbd{
+  .pusher:hover{ filter:brightness(1.06); }
+  .pusher:active, .pusher.is-active{
+    transform:translateY(.06em);
+    background: linear-gradient(180deg, var(--brass-2), var(--brass-3));
+  }
+  .pusher:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .pusher-left{ left:calc(50% - 3.05em); }
+  .pusher-right{ left:calc(50% + 1.7em); }
+
+  .jewel{
+    width:.42em; height:.42em; border-radius:50%; background:var(--brass-3);
+    box-shadow: inset 0 0 .05em rgba(0,0,0,.6);
+    transition: background .15s ease;
+  }
+  .pusher-right.blind-on .jewel{ background:var(--rust); box-shadow:0 0 .35em var(--rust); }
+
+  .stage.running .pusher-right{ opacity:.45; cursor:not-allowed; }
+
+  .mode-row{
+    display:flex; align-items:center; gap:.5em; font-size:.85em;
+    background:none; border:none; padding:.2em .4em; margin:0 auto; cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); border-radius:3px;
+  }
+  .mode-row:hover{ background:var(--paper-deep); }
+  .mode-row:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .mode-row:disabled{ opacity:.5; cursor:not-allowed; }
+  .mode-row .dot{
+    width:.6em; height:.6em; border-radius:50%; background:var(--ink-soft);
+    box-shadow: inset 0 0 .08em rgba(0,0,0,.5);
+  }
+  .mode-row.on .dot{ background:var(--rust); box-shadow:0 0 .4em var(--rust); }
+  .mode-row .state{ font-weight:600; color:var(--ink-soft); }
+  .mode-row.on .state{ color:var(--rust); }
+
+  /* ============ big start/stop button ============ */
+  .bigbtn{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:1.15em; letter-spacing:.12em;
+    text-transform:uppercase; padding:.6em 2.6em; border-radius:.5em; border:none; cursor:pointer;
+    background:linear-gradient(180deg, var(--brass-1), var(--brass-2)); color:var(--paper-deep);
+    box-shadow:0 .2em .35em var(--shadow), inset 0 .08em 0 rgba(255,255,255,.35);
+  }
+  .bigbtn:hover{ filter:brightness(1.05); }
+  .bigbtn:active, .bigbtn.is-active{
+    transform:translateY(.04em);
+    background:linear-gradient(180deg, var(--rust), var(--brass-3)); color:var(--paper);
+  }
+  .bigbtn:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+
+  /* ============ plate ============ */
+  .plate{ text-align:center; display:flex; flex-direction:column; gap:.35em; }
+  .plate .name{
+    font-family:'Cinzel',serif; font-weight:700; font-size:.95em; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--ink);
+  }
+  .plate .hint{ font-size:.68em; color:var(--ink-soft); }
+  .plate kbd{
     font-family:'IBM Plex Mono',monospace; background:var(--paper-deep); border:1px solid var(--line);
-    border-radius:3px; padding:1px 6px; font-size:10.5px;
+    border-radius:3px; padding:.05em .4em; font-size:.95em;
   }
 </style>
 
-<div class="wrap">
-  <div>
-    <h1>Blind Stopwatch</h1>
-    <div class="tag">start · stop · no peeking</div>
-  </div>
-
-  <div class="panel">
-    <div class="face">
-      <div class="display" id="display">00:00.00</div>
-      <div class="status" id="status">READY</div>
+<div class="stage" id="stage">
+  <div class="watch" id="watch">
+    <div class="case">
+      <div class="dial-face"></div>
+      <div class="numerals" id="numerals"></div>
+      <div class="dial-content">
+        <div class="status" id="status">READY</div>
+        <div class="window"><div class="display" id="display">00:00.00</div></div>
+        <div class="maker">BLIND STOP MECHANISM</div>
+      </div>
+      <div class="crown"></div>
+      <button class="pusher pusher-left" id="mainBtn" type="button" aria-label="Start or stop the stopwatch"></button>
+      <button class="pusher pusher-right" id="blindBtn" type="button" aria-label="Toggle blind stop mode"><span class="jewel" id="jewel"></span></button>
     </div>
-
-    <button class="btn-main" id="mainBtn" type="button">Start</button>
-
-    <label class="toggle-row" for="blindToggle">
-      <span class="switch">
-        <input type="checkbox" id="blindToggle">
-        <span class="track"><span class="knob"></span></span>
-      </span>
-      <span class="toggle-text">
-        <span class="name">Blind Stop</span>
-        <span class="desc">Hide the time while it runs. It only shows once you stop it.</span>
-      </span>
-    </label>
   </div>
-
-  <footer>Space bar also starts and stops it. <kbd>Space</kbd></footer>
+  <button type="button" class="bigbtn" id="bigBtn">Start</button>
+  <div class="plate">
+    <span class="name">No. 001 — Blind Stopwatch</span>
+    <button type="button" class="mode-row" id="modeRow" aria-label="Toggle blind stop mode">
+      <span class="dot" id="modeDot"></span>
+      <span>Blind Stop:</span>
+      <span class="state" id="modeState">Off</span>
+    </button>
+    <span class="hint">Big button (or <kbd>Space</kbd>) starts &amp; stops · row above toggles blind stop</span>
+  </div>
 </div>
 
 <script>
   (function(){
+    var ROMAN = ['XII','I','II','III','IV','V','VI','VII','VIII','IX','X','XI'];
+    var numerals = document.getElementById('numerals');
+    var html = '';
+    for(var i=0;i<12;i++){
+      var deg = i*30;
+      html += '<span style="transform:rotate('+deg+'deg) translateY(-6.6em)"><i style="transform:translate(-50%,-50%) rotate('+(-deg)+'deg)">'+ROMAN[i]+'</i></span>';
+    }
+    numerals.innerHTML = html;
+
+    var stage = document.getElementById('stage');
     var display = document.getElementById('display');
     var status = document.getElementById('status');
     var mainBtn = document.getElementById('mainBtn');
-    var blindToggle = document.getElementById('blindToggle');
+    var bigBtn = document.getElementById('bigBtn');
+    var blindBtn = document.getElementById('blindBtn');
+    var modeRow = document.getElementById('modeRow');
+    var modeState = document.getElementById('modeState');
 
     var running = false;
     var blind = false;
@@ -167,35 +248,41 @@
     var rafId = null;
     var MASK = '••:••.••';
 
+    function renderBlind(){
+      blindBtn.classList.toggle('blind-on', blind);
+      modeRow.classList.toggle('on', blind);
+      modeState.textContent = blind ? 'On' : 'Off';
+    }
+
     try{
-      var saved = localStorage.getItem('blindStopwatch.blind');
-      if(saved === '1'){ blind = true; blindToggle.checked = true; }
+      if(localStorage.getItem('blindStopwatch.blind') === '1'){ blind = true; }
     }catch(e){}
+    renderBlind();
 
     function fmt(ms){
-      var totalCenti = Math.floor(ms / 10);
+      var totalCenti = Math.floor(ms/10);
       var centi = totalCenti % 100;
-      var totalSec = Math.floor(totalCenti / 100);
+      var totalSec = Math.floor(totalCenti/100);
       var sec = totalSec % 60;
-      var min = Math.floor(totalSec / 60);
-      function pad(n){ return (n < 10 ? '0' : '') + n; }
-      return pad(min) + ':' + pad(sec) + '.' + pad(centi);
+      var min = Math.floor(totalSec/60);
+      function pad(n){ return (n<10?'0':'')+n; }
+      return pad(min)+':'+pad(sec)+'.'+pad(centi);
     }
 
     function tick(){
       if(!running) return;
-      if(!blind){
-        display.textContent = fmt(performance.now() - startTs);
-      }
+      if(!blind) display.textContent = fmt(performance.now()-startTs);
       rafId = requestAnimationFrame(tick);
     }
 
     function start(){
       running = true;
+      stage.classList.add('running');
+      modeRow.disabled = true;
       startTs = performance.now();
-      mainBtn.textContent = 'Stop';
-      mainBtn.classList.add('running');
-      blindToggle.disabled = true;
+      mainBtn.classList.add('is-active');
+      bigBtn.classList.add('is-active');
+      bigBtn.textContent = 'Stop';
       status.textContent = blind ? 'RUNNING — CONCEALED' : 'RUNNING';
       status.className = 'status ' + (blind ? 'is-hidden' : 'is-running');
       display.textContent = blind ? MASK : '00:00.00';
@@ -205,31 +292,33 @@
 
     function stop(){
       running = false;
+      stage.classList.remove('running');
+      modeRow.disabled = false;
       if(rafId) cancelAnimationFrame(rafId);
-      var elapsed = performance.now() - startTs;
+      var elapsed = performance.now()-startTs;
       display.classList.remove('masked');
       display.textContent = fmt(elapsed);
-      mainBtn.textContent = 'Start';
-      mainBtn.classList.remove('running');
-      blindToggle.disabled = false;
+      mainBtn.classList.remove('is-active');
+      bigBtn.classList.remove('is-active');
+      bigBtn.textContent = 'Start';
       status.textContent = 'STOPPED';
       status.className = 'status';
     }
 
-    mainBtn.addEventListener('click', function(){
-      if(running) stop(); else start();
-    });
+    mainBtn.addEventListener('click', function(){ running ? stop() : start(); });
+    bigBtn.addEventListener('click', function(){ running ? stop() : start(); });
 
-    blindToggle.addEventListener('change', function(){
-      blind = blindToggle.checked;
+    function toggleBlind(){
+      if(running) return;
+      blind = !blind;
+      renderBlind();
       try{ localStorage.setItem('blindStopwatch.blind', blind ? '1' : '0'); }catch(e){}
-    });
+    }
+    blindBtn.addEventListener('click', toggleBlind);
+    modeRow.addEventListener('click', toggleBlind);
 
     document.addEventListener('keydown', function(e){
-      if(e.code === 'Space' && document.activeElement !== blindToggle){
-        e.preventDefault();
-        mainBtn.click();
-      }
+      if(e.code === 'Space'){ e.preventDefault(); mainBtn.click(); }
     });
   })();
 </script>
