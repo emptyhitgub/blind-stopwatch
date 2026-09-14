@@ -203,7 +203,7 @@
       <div class="dial-content">
         <div class="status" id="status">READY</div>
         <div class="window"><div class="display" id="display">00:00.00</div></div>
-        <div class="maker">BLIND STOP MECHANISM</div>
+        <div class="maker">Timer</div>
       </div>
       <div class="crown"></div>
       <button class="pusher pusher-left" id="mainBtn" type="button" aria-label="Start or stop the stopwatch"></button>
@@ -212,13 +212,11 @@
   </div>
   <button type="button" class="bigbtn" id="bigBtn">Start</button>
   <div class="plate">
-    <span class="name">No. 001 — Blind Stopwatch</span>
     <button type="button" class="mode-row" id="modeRow" aria-label="Toggle blind stop mode">
       <span class="dot" id="modeDot"></span>
-      <span>Blind Stop:</span>
+      <span>Blind?:</span>
       <span class="state" id="modeState">Off</span>
     </button>
-    <span class="hint">Big button (or <kbd>Space</kbd>) starts &amp; stops · row above toggles blind stop</span>
   </div>
 </div>
 
@@ -283,7 +281,7 @@
       mainBtn.classList.add('is-active');
       bigBtn.classList.add('is-active');
       bigBtn.textContent = 'Stop';
-      status.textContent = blind ? 'RUNNING — CONCEALED' : 'RUNNING';
+      status.textContent = blind ? 'BLIND' : 'RUNNING';
       status.className = 'status ' + (blind ? 'is-hidden' : 'is-running');
       display.textContent = blind ? MASK : '00:00.00';
       display.classList.toggle('masked', blind);
