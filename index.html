@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blind Stopwatch</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <style>
@@ -140,6 +145,7 @@
     background: linear-gradient(180deg, var(--brass-2), var(--brass-3));
   }
   .pusher:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .pusher:disabled{ opacity:.45; cursor:not-allowed; filter:none; }
   .pusher-left{ left:calc(50% - 3.05em); }
   .pusher-right{ left:calc(50% + 1.7em); }
 
@@ -149,8 +155,6 @@
     transition: background .15s ease;
   }
   .pusher-right.blind-on .jewel{ background:var(--rust); box-shadow:0 0 .35em var(--rust); }
-
-  .stage.running .pusher-right{ opacity:.45; cursor:not-allowed; }
 
   .mode-row{
     display:flex; align-items:center; gap:.5em; font-size:.85em;
@@ -168,10 +172,13 @@
   .mode-row .state{ font-weight:600; color:var(--ink-soft); }
   .mode-row.on .state{ color:var(--rust); }
 
-  /* ============ big start/stop button ============ */
+  /* ============ controls ============ */
+  .controls{ display:flex; align-items:stretch; gap:.7em; }
+
   .bigbtn{
     font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:1.15em; letter-spacing:.12em;
-    text-transform:uppercase; padding:.6em 2.6em; border-radius:.5em; border:none; cursor:pointer;
+    text-transform:uppercase; padding:.6em 2.2em; border-radius:.5em; border:none; cursor:pointer;
+    min-height:2.4em;
     background:linear-gradient(180deg, var(--brass-1), var(--brass-2)); color:var(--paper-deep);
     box-shadow:0 .2em .35em var(--shadow), inset 0 .08em 0 rgba(255,255,255,.35);
   }
@@ -181,19 +188,27 @@
     background:linear-gradient(180deg, var(--rust), var(--brass-3)); color:var(--paper);
   }
   .bigbtn:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .bigbtn:disabled{
+    opacity:.35; cursor:not-allowed; filter:none; transform:none;
+    box-shadow:0 .2em .35em var(--shadow), inset 0 .08em 0 rgba(255,255,255,.35);
+  }
+
+  .resetbtn{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.15em; letter-spacing:.12em;
+    text-transform:uppercase; padding:.6em 1.3em; border-radius:.5em; cursor:pointer;
+    min-height:2.4em;
+    background:transparent; color:var(--ink-soft); border:1px solid var(--line);
+  }
+  .resetbtn:not(:disabled):hover{ background:var(--paper-deep); color:var(--ink); }
+  .resetbtn:not(:disabled):active{ transform:translateY(.04em); }
+  .resetbtn:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .resetbtn:disabled{ opacity:.3; cursor:not-allowed; }
 
   /* ============ plate ============ */
   .plate{ text-align:center; display:flex; flex-direction:column; gap:.35em; }
-  .plate .name{
-    font-family:'Cinzel',serif; font-weight:700; font-size:.95em; letter-spacing:.1em;
-    text-transform:uppercase; color:var(--ink);
-  }
-  .plate .hint{ font-size:.68em; color:var(--ink-soft); }
-  .plate kbd{
-    font-family:'IBM Plex Mono',monospace; background:var(--paper-deep); border:1px solid var(--line);
-    border-radius:3px; padding:.05em .4em; font-size:.95em;
-  }
 </style>
+</head>
+<body>
 
 <div class="stage" id="stage">
   <div class="watch" id="watch">
@@ -210,7 +225,12 @@
       <button class="pusher pusher-right" id="blindBtn" type="button" aria-label="Toggle blind stop mode"><span class="jewel" id="jewel"></span></button>
     </div>
   </div>
-  <button type="button" class="bigbtn" id="bigBtn">Start</button>
+
+  <div class="controls">
+    <button type="button" class="bigbtn" id="bigBtn">Start</button>
+    <button type="button" class="resetbtn" id="resetBtn">Reset</button>
+  </div>
+
   <div class="plate">
     <button type="button" class="mode-row" id="modeRow" aria-label="Toggle blind stop mode">
       <span class="dot" id="modeDot"></span>
@@ -236,15 +256,18 @@
     var status = document.getElementById('status');
     var mainBtn = document.getElementById('mainBtn');
     var bigBtn = document.getElementById('bigBtn');
+    var resetBtn = document.getElementById('resetBtn');
     var blindBtn = document.getElementById('blindBtn');
     var modeRow = document.getElementById('modeRow');
     var modeState = document.getElementById('modeState');
 
-    var running = false;
+    // 'ready' -> 'running' -> 'stopped' -> (reset) -> 'ready'
+    var mode = 'ready';
     var blind = false;
     var startTs = null;
     var rafId = null;
-    var MASK = '••:••.••';
+    var MASK = '\u2022\u2022:\u2022\u2022.\u2022\u2022';
+    var ZERO = '00:00.00';
 
     function renderBlind(){
       blindBtn.classList.toggle('blind-on', blind);
@@ -252,10 +275,30 @@
       modeState.textContent = blind ? 'On' : 'Off';
     }
 
+    function renderMode(){
+      var running = (mode === 'running');
+      var stopped = (mode === 'stopped');
+
+      stage.classList.toggle('running', running);
+
+      bigBtn.textContent = running ? 'Stop' : 'Start';
+      bigBtn.disabled = stopped;            // reading stays until Reset clears it
+      bigBtn.classList.toggle('is-active', running);
+
+      mainBtn.disabled = stopped;
+      mainBtn.classList.toggle('is-active', running);
+
+      resetBtn.disabled = !stopped;
+
+      blindBtn.disabled = running;
+      modeRow.disabled = running;
+    }
+
     try{
       if(localStorage.getItem('blindStopwatch.blind') === '1'){ blind = true; }
     }catch(e){}
     renderBlind();
+    renderMode();
 
     function fmt(ms){
       var totalCenti = Math.floor(ms/10);
@@ -268,46 +311,56 @@
     }
 
     function tick(){
-      if(!running) return;
+      if(mode !== 'running') return;
       if(!blind) display.textContent = fmt(performance.now()-startTs);
       rafId = requestAnimationFrame(tick);
     }
 
     function start(){
-      running = true;
-      stage.classList.add('running');
-      modeRow.disabled = true;
+      if(mode !== 'ready') return;
+      mode = 'running';
       startTs = performance.now();
-      mainBtn.classList.add('is-active');
-      bigBtn.classList.add('is-active');
-      bigBtn.textContent = 'Stop';
-      status.textContent = blind ? 'BLIND' : 'RUNNING';
+      status.textContent = blind ? 'RUNNING' : 'RUNNING';
       status.className = 'status ' + (blind ? 'is-hidden' : 'is-running');
-      display.textContent = blind ? MASK : '00:00.00';
+      display.textContent = blind ? MASK : ZERO;
       display.classList.toggle('masked', blind);
+      renderMode();
       rafId = requestAnimationFrame(tick);
     }
 
     function stop(){
-      running = false;
-      stage.classList.remove('running');
-      modeRow.disabled = false;
-      if(rafId) cancelAnimationFrame(rafId);
-      var elapsed = performance.now()-startTs;
+      if(mode !== 'running') return;
+      var elapsed = performance.now() - startTs;
+      mode = 'stopped';
+      if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
       display.classList.remove('masked');
       display.textContent = fmt(elapsed);
-      mainBtn.classList.remove('is-active');
-      bigBtn.classList.remove('is-active');
-      bigBtn.textContent = 'Start';
       status.textContent = 'STOPPED';
       status.className = 'status';
+      renderMode();
     }
 
-    mainBtn.addEventListener('click', function(){ running ? stop() : start(); });
-    bigBtn.addEventListener('click', function(){ running ? stop() : start(); });
+    function reset(){
+      if(mode !== 'stopped') return;
+      mode = 'ready';
+      display.classList.remove('masked');
+      display.textContent = ZERO;
+      status.textContent = 'READY';
+      status.className = 'status';
+      renderMode();
+    }
+
+    function toggleRun(){
+      if(mode === 'running'){ stop(); }
+      else if(mode === 'ready'){ start(); }
+    }
+
+    mainBtn.addEventListener('click', toggleRun);
+    bigBtn.addEventListener('click', toggleRun);
+    resetBtn.addEventListener('click', reset);
 
     function toggleBlind(){
-      if(running) return;
+      if(mode === 'running') return;
       blind = !blind;
       renderBlind();
       try{ localStorage.setItem('blindStopwatch.blind', blind ? '1' : '0'); }catch(e){}
@@ -316,7 +369,14 @@
     modeRow.addEventListener('click', toggleBlind);
 
     document.addEventListener('keydown', function(e){
-      if(e.code === 'Space'){ e.preventDefault(); mainBtn.click(); }
+      // let a focused button handle its own Space/Enter natively
+      var t = e.target;
+      if(t && (t.tagName === 'BUTTON' || t.isContentEditable)) return;
+
+      if(e.code === 'Space'){ e.preventDefault(); toggleRun(); }
+      else if(e.code === 'KeyR'){ e.preventDefault(); reset(); }
     });
   })();
 </script>
+</body>
+</html>
